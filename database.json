@@ -1,0 +1,61 @@
+{
+    "items": [],
+    "dataUser": {
+        "1347095840728023091": {
+            "discordUsername": "aischanfy",
+            "registeredAt": "2025-10-28T05:58:43.860Z",
+            "balance": 0,
+            "tiktokVerified": true,
+            "tiktokUsername": "zettozen",
+            "tiktokVerification": null,
+            "tiktokInfo": {
+                "id": "7479360484920263687",
+                "uniqueId": "zettozen",
+                "nickname": "𝐑𝖚𝖓𝖊 𝖋𝖙 ℭ𝔥𝔩𝔬𝔢𝔯𝔞",
+                "signature": "FTFUJI",
+                "avatar": "https://p16-sign-sg.tiktokcdn.com/tos-alisg-avt-0068/e4dfa90cb930052d2a0c101e6842d194~tplv-tiktokx-cropcenter:1080:1080.jpeg?dr=14579&refresh_token=6f01c6e6&x-expires=1761836400&x-signature=MarKBL%2BjsOyUHKnJASDfqu4a7wI%3D&t=4d5b0474&ps=13740610&shp=a5d48078&shcp=81f88b70&idc=my",
+                "verified": false,
+                "followerCount": 2502,
+                "followingCount": 7,
+                "heartCount": 242400,
+                "videoCount": 125
+            }
+        }
+    },
+    "dataCampaigns": {
+        "C-1761635270661": {
+            "id": "C-1761635270661",
+            "title": "HALLUCINATION (Slowed)",
+            "musicId": "7495952495032436737",
+            "musicLink": "https://www.tiktok.com/music/HALLUCINATION-Slowed-7495952495032436737?is_from_webapp=1&sender_device=pc",
+            "totalBudget": 350,
+            "budgetRemaining": 350,
+            "payoutType": "view",
+            "ratePer1mViews": 120,
+            "payoutPerSubmission": 250,
+            "minLike": 200,
+            "maxSubmission": 10,
+            "description": "Sillakan dicoba",
+            "isActive": true,
+            "createdAt": "2025-10-28T07:07:50.661Z",
+            "creatorId": "1347095840728023091",
+            "submissions": [
+                {
+                    "userId": "1347095840728023091",
+                    "tiktokUsername": "zettozen",
+                    "videoUrl": "https://www.tiktok.com/@zettozen/photo/7500988896663145733?is_from_webapp=1&sender_device=pc&web_id=7557641005325256213",
+                    "status": "approved",
+                    "submittedAt": "2025-10-28T15:52:52.883Z",
+                    "lastChecked": "2025-10-28T15:52:52.883Z",
+                    "currentLikes": 31170,
+                    "currentViews": 518891,
+                    "initialViews": 518891,
+                    "totalEarnings": 0
+                }
+            ]
+        }
+    },
+    "botSettings": {
+        "announcementChannelId": "1381109139031461933"
+    }
+}
