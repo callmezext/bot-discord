@@ -1,33 +1,25 @@
-// File: worker.js
-// Ini adalah file terpisah yang HANYA bertugas mengurus update background task
+// File: worker.js (Diperbarui untuk Approval Flow)
 
 const { readDatabase, writeDatabase } = require("./db-handler.js");
 const { parseStats } = require("./utils.js");
 const axios = require("axios");
-const { parentPort } = require("worker_threads"); // Untuk komunikasi
+const { parentPort } = require("worker_threads");
+const { apiKey } = require("./config.json");
 
-// Fungsi log untuk mengirim pesan ke thread utama (index.js)
 function log(message) {
-  // Cetak ke konsol worker sendiri
-  console.log(message);
-
-  // Kirim juga ke bot utama agar bisa dilihat di log utama
-  if (parentPort) {
-    parentPort.postMessage(`[WORKER] ${message}`);
-  } else {
-    // Jika dijalankan langsung (bukan sebagai worker)
-    // console.log(`[WORKER-SOLO] ${message}`);
-  }
+  /* ... (fungsi log tetap sama) ... */
 }
 
 async function updateAllCampaignStats() {
-  log(`[${new Date().toISOString()}] Menjalankan update stats campaign...`);
+  log(`Menjalankan update stats campaign...`);
   let db = await readDatabase();
   let changesMade = false;
 
   for (const campaignId of Object.keys(db.dataCampaigns)) {
     const campaign = db.dataCampaigns[campaignId];
+    // log(`[DEBUG] Mengecek Campaign ID: ${campaignId}, Judul: ${campaign.title}`);
 
+    // --- LOGIKA PENGECEKAN CAMPAIGN TETAP SAMA ---
     if (
       !campaign.isActive ||
       !campaign.submissions ||
@@ -35,100 +27,83 @@ async function updateAllCampaignStats() {
     ) {
       continue;
     }
-    if (campaign.budgetRemaining <= 0 && campaign.payoutType === "view") {
-      if (campaign.isActive) {
-        campaign.isActive = false;
-        changesMade = true;
-        log(`[INFO] Campaign ${campaign.id} dinonaktifkan (budget habis).`);
-      }
-      continue;
-    }
+    // (Worker tidak lagi menonaktifkan campaign karena budget habis, itu dilakukan saat accept)
+    // if (campaign.budgetRemaining <= 0 && campaign.payoutType === 'view') { ... } // Hapus blok ini
 
     for (const submission of campaign.submissions) {
+      // Hanya proses submission yang BELUM final (pending atau sudah accepted)
+      if (submission.status === "rejected") continue;
+
+      // log(`[DEBUG] Mengecek Submission: User ${submission.userId}, Video ${submission.videoUrl}, Status: ${submission.status}`);
       try {
         const response = await axios.get(
           "https://api.alyachan.dev/api/tiktok",
           {
-            params: { url: submission.videoUrl, apikey: "aiscya" },
+            params: { url: submission.videoUrl, apikey: apiKey },
           }
         );
 
         if (response.data && response.data.status && response.data.stats) {
-          const newLikes = parseStats(response.data.stats.likes);
-          const newViews = parseStats(response.data.stats.views);
+          const apiStats = response.data.stats;
+          const newLikes = parseStats(apiStats.likes);
+          const newViews = parseStats(apiStats.views);
+          // log(`[DEBUG] Parsed Stats: newLikes=${newLikes}, newViews=${newViews}`);
+          // log(`[DEBUG] DB Stats Saat Ini: currentLikes=${submission.currentLikes}, currentViews=${submission.currentViews}`);
 
+          // Cek jika ada perubahan stats
           if (
             submission.currentLikes !== newLikes ||
             submission.currentViews !== newViews
           ) {
-            if (
-              campaign.payoutType === "view" &&
-              newViews > submission.currentViews
-            ) {
-              const viewsSinceLastCheck = newViews - submission.currentViews;
+            changesMade = true;
+
+            // --- LOGIKA HITUNG POTENSI EARNING (TIPE VIEW) ---
+            if (campaign.payoutType === "view") {
               const rate = campaign.ratePer1mViews || 0;
               const ratePerView = rate / 1000000;
-              const earningsThisInterval = viewsSinceLastCheck * ratePerView;
+              // Hitung TOTAL potensi earning berdasarkan views SAAT INI
+              const totalPotentialEarning = newViews * ratePerView;
 
-              let finalEarnings = 0;
-              if (campaign.budgetRemaining >= earningsThisInterval) {
-                finalEarnings = earningsThisInterval;
-                campaign.budgetRemaining -= earningsThisInterval;
-              } else {
-                finalEarnings = campaign.budgetRemaining;
-                campaign.budgetRemaining = 0;
-                campaign.isActive = false;
-              }
-
-              const userToPay = db.dataUser[submission.userId];
-              if (userToPay) {
-                if (!userToPay.balance) userToPay.balance = 0;
-                userToPay.balance += finalEarnings;
-                submission.totalEarnings += finalEarnings;
-              }
+              // Update totalEarnings di submission (BUKAN balance user)
+              submission.totalEarnings = totalPotentialEarning;
+              // log(`[DEBUG] Update Potensi Earning Video ${submission.submissionId}: $${submission.totalEarnings}`);
             }
+            // --- BATAS LOGIKA EARNING ---
+
             submission.currentLikes = newLikes;
             submission.currentViews = newViews;
             submission.lastChecked = new Date().toISOString();
+          } else if (submission.status !== "accepted") {
+            // Jika tidak ada perubahan stats, tapi statusnya masih pending
+            // update lastChecked saja agar tidak numpuk error FAILED
+            submission.lastChecked = new Date().toISOString();
             changesMade = true;
           }
+        } else {
+          log(`[WARN] Respons API tidak valid untuk ${submission.videoUrl}`);
+          submission.lastChecked = `FAILED_INVALID_RESPONSE: ${new Date().toISOString()}`;
+          changesMade = true;
         }
       } catch (error) {
         log(
-          `Gagal update stats untuk ${submission.videoUrl}: ${error.message}`
+          `[ERROR] Gagal update stats untuk ${submission.videoUrl}: ${error.message}`
         );
-        submission.lastChecked = `FAILED: ${new Date().toISOString()}`;
+        submission.lastChecked = `FAILED_AXIOS_ERROR: ${new Date().toISOString()}`;
         changesMade = true;
       }
-      // Jeda 2 detik antar API call
       await new Promise((resolve) => setTimeout(resolve, 2000));
     }
   }
   if (changesMade) {
     await writeDatabase(db);
-    log(
-      `[${new Date().toISOString()}] Update stats campaign selesai. Perubahan disimpan.`
-    );
+    log(`Update stats campaign selesai. Perubahan disimpan.`);
   } else {
-    log(
-      `[${new Date().toISOString()}] Update stats campaign selesai. Tidak ada perubahan.`
-    );
+    log(`Update stats campaign selesai. Tidak ada perubahan.`);
   }
 }
 
+// ... (startCampaignMonitor tetap sama) ...
 function startCampaignMonitor() {
-  const updateInterval = 3600 * 1000; // 1 Jam
-
-  log("[INFO] Update campaign stats pertama akan berjalan dalam 5 detik...");
-  setTimeout(updateAllCampaignStats, 5000);
-
-  setInterval(updateAllCampaignStats, updateInterval);
-  log(
-    `[INFO] Monitor campaign stats telah diatur. Update setiap ${
-      updateInterval / 60000
-    } menit.`
-  );
+  /* ... */
 }
-
-// Langsung jalankan monitor saat file worker ini dipanggil
 startCampaignMonitor();

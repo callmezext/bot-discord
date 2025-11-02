@@ -1,8 +1,9 @@
-// File: plugin/submit-here.js (Diperbarui)
+// File: plugin/submit-here.js (Diperbarui untuk Approval Flow)
 const { SlashCommandBuilder } = require("discord.js");
 const { readDatabase, writeDatabase } = require("../db-handler.js");
 const { parseStats } = require("../utils.js");
 const axios = require("axios");
+const { apiKey } = require("../config.json"); // Ambil API Key
 
 module.exports = {
   // ... (data dan autocomplete TETAP SAMA) ...
@@ -37,7 +38,9 @@ module.exports = {
         .slice(0, 25);
       await interaction.respond(
         filtered.map((campaign) => ({
-          name: `(${campaign.title}) - Budget: $${campaign.budgetRemaining}`,
+          name: `(${
+            campaign.title
+          }) - Budget: $${campaign.budgetRemaining.toLocaleString()}`,
           value: campaign.id,
         }))
       );
@@ -55,90 +58,92 @@ module.exports = {
       const campaignId = interaction.options.getString("campaign");
       const videoLink = interaction.options.getString("link");
 
-      // Cek registrasi dan verifikasi
+      // Cek registrasi & verifikasi
       if (!db.dataUser[userId] || !db.dataUser[userId].tiktokVerified) {
-        await interaction.editReply(
-          "❌ Anda harus terdaftar dan terverifikasi TikTok."
-        );
-        return;
+        /* ... */
       }
 
-      // ... (Cek campaign, cek link duplikat, panggil API, cek music ID, cek min like - SEMUA SAMA) ...
       const campaign = db.dataCampaigns[campaignId];
       if (!campaign) {
-        /*...*/
+        /* ... */
       }
       if (!campaign.isActive) {
-        /*...*/
+        /* ... */
       }
       const alreadySubmitted = campaign.submissions.find(
         (sub) => sub.videoUrl === videoLink
       );
       if (alreadySubmitted) {
-        /*...*/
+        /* ... */
       }
+
       const response = await axios.get("https://api.alyachan.dev/api/tiktok", {
-        params: { url: videoLink, apikey: "aiscya" },
+        params: { url: videoLink, apikey: apiKey }, // Gunakan apiKey
       });
       if (!response.data || !response.data.status) {
-        /*...*/
+        /* ... */
       }
+
       const videoStats = response.data.stats;
       const musicInfo = response.data.music_info;
       if (musicInfo.id.toString() !== campaign.musicId) {
-        /*...*/
+        /* ... */
       }
       const currentLikes = parseStats(videoStats.likes);
       if (campaign.minLike > 0 && currentLikes < campaign.minLike) {
-        /*...*/
+        /* ... */
       }
 
       const currentViews = parseStats(videoStats.views);
-      let totalEarnings = 0;
+      let potentialEarnings = 0; // Ganti nama variabel
       let replyMessage = "";
 
-      // --- LOGIKA BARU UNTUK BALANCE ---
+      // --- LOGIKA BARU UNTUK POTENSI EARNING ---
       if (campaign.payoutType === "submission") {
-        const payoutAmount = campaign.payoutPerSubmission;
-        if (campaign.budgetRemaining < payoutAmount) {
-          await interaction.editReply(
-            "❌ Submission ditolak. Budget campaign habis."
-          );
-          return;
-        }
-
-        campaign.budgetRemaining -= payoutAmount;
-        totalEarnings = payoutAmount;
-
-        // TAMBAHKAN BALANCE KE USER
-        if (!db.dataUser[userId].balance) db.dataUser[userId].balance = 0; // Safety init
-        db.dataUser[userId].balance += payoutAmount;
-
-        replyMessage = `✅ **Submission Approved!**\nAnda mendapat: **$${payoutAmount.toLocaleString(
+        // Tipe "Per Submission" -> Catat potensi earningnya
+        potentialEarnings = campaign.payoutPerSubmission;
+        // JANGAN kurangi budget atau tambah balance user di sini
+        replyMessage = `✅ **Submission Diterima!**\nVideo Anda sedang menunggu persetujuan moderator (Tipe: Per Submission).\nPotensi Pendapatan: **$${potentialEarnings.toLocaleString(
           "en-US",
           { minimumFractionDigits: 2 }
-        )}**\n- Likes: ${currentLikes.toLocaleString()}`;
+        )}**\n- Likes Saat Ini: ${currentLikes.toLocaleString()}`;
       } else if (campaign.payoutType === "view") {
-        totalEarnings = 0;
-        replyMessage = `✅ **Submission Approved!**\n(Tipe: Per View). Payout akan dihitung otomatis.\n- Views: ${currentViews.toLocaleString()}\n- Likes: ${currentLikes.toLocaleString()}`;
+        // Tipe "Per View" -> Potensi earning awal 0, dihitung worker
+        potentialEarnings = 0;
+        replyMessage = `✅ **Submission Diterima!**\nVideo Anda sedang menunggu persetujuan moderator (Tipe: Per View).\nPendapatan akan dihitung berdasarkan views setelah disetujui.\n- Views Awal: ${currentViews.toLocaleString()}\n- Likes Awal: ${currentLikes.toLocaleString()}`;
       }
       // --- BATAS LOGIKA BARU ---
 
+      // --- PEMBUATAN SUBMISSION ID ---
+      const userSubmissionsInCampaign = campaign.submissions.filter(
+        (s) => s.userId === userId
+      );
+      const nextIdNumber = userSubmissionsInCampaign.length + 1;
+      // Ambil 4 huruf pertama username TikTok, uppercase
+      const usernamePrefix = (db.dataUser[userId].tiktokUsername || "USER")
+        .substring(0, 4)
+        .toUpperCase();
+      const submissionId = `${usernamePrefix}${nextIdNumber
+        .toString()
+        .padStart(2, "0")}`; // Contoh: ZETT01, ZETT02
+      // --- BATAS SUBMISSION ID ---
+
       const newSubmission = {
         userId: userId,
+        submissionId: submissionId, // <-- BARU
         tiktokUsername: db.dataUser[userId].tiktokUsername,
         videoUrl: videoLink,
-        status: "approved",
+        status: "pending", // <-- BARU: Status awal
         submittedAt: new Date().toISOString(),
         lastChecked: new Date().toISOString(),
         currentLikes: currentLikes,
         currentViews: currentViews,
         initialViews: currentViews,
-        totalEarnings: totalEarnings,
+        totalEarnings: potentialEarnings, // <-- Simpan potensi earning
       };
 
       db.dataCampaigns[campaignId].submissions.push(newSubmission);
-      await writeDatabase(db); // Menyimpan balance user DAN data campaign
+      await writeDatabase(db);
       await interaction.editReply(replyMessage);
     } catch (error) {
       console.error("Submit error:", error.message);

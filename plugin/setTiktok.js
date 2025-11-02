@@ -1,4 +1,4 @@
-// File: plugin/settiktok.js
+// File: plugin/setTiktok.js (Nama Diperbarui)
 const {
   SlashCommandBuilder,
   EmbedBuilder,
@@ -8,6 +8,7 @@ const {
 } = require("discord.js");
 const { readDatabase, writeDatabase } = require("../db-handler.js");
 const axios = require("axios");
+const { apiKey } = require("../config.json"); // Ambil API Key
 
 function generateCode() {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -20,7 +21,9 @@ function generateCode() {
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName("settiktok")
+    // --- PERUBAHAN DI SINI ---
+    .setName("set-tiktok") // <-- Nama diubah
+    // -------------------------
     .setDescription("Menghubungkan akun TikTok Anda untuk verifikasi.")
     .addStringOption((option) =>
       option
@@ -74,7 +77,7 @@ module.exports = {
       i.customId === "verify_tiktok_now" && i.user.id === userId;
     const collector = interaction.channel.createMessageComponentCollector({
       filter,
-      time: 300000,
+      time: 300000, // 5 menit
     });
 
     collector.on("collect", async (i) => {
@@ -85,7 +88,7 @@ module.exports = {
 
       if (!verificationData || Date.now() > verificationData.expiresAt) {
         await i.editReply(
-          "Kode verifikasi Anda sudah kedaluwarsa. Silakan mulai lagi dengan `/setTiktok`."
+          "Kode verifikasi Anda sudah kedaluwarsa. Silakan mulai lagi dengan `/set-tiktok`." // <-- Nama diubah di pesan error juga
         );
         return;
       }
@@ -94,7 +97,7 @@ module.exports = {
         const response = await axios.get(
           "https://api.alyachan.dev/api/tiktok-stalk",
           {
-            params: { username: verificationData.username, apikey: "aiscya" },
+            params: { username: verificationData.username, apikey: apiKey }, // Gunakan apiKey
           }
         );
 
@@ -150,14 +153,15 @@ module.exports = {
     });
 
     collector.on("end", (collected) => {
-      if (collected.size === 0) {
+      // Hanya edit jika interaksi belum dibalas (misal oleh error atau success)
+      if (!interaction.replied && collected.size === 0) {
         interaction
           .editReply({
             content: "Waktu verifikasi telah habis.",
             embeds: [],
             components: [],
           })
-          .catch(console.error);
+          .catch(console.error); // Tangkap error jika editReply gagal (misal interaksi sudah tidak ada)
       }
     });
   },
