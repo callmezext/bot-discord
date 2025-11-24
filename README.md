@@ -13,6 +13,32 @@ Repository ini berisi source code **Bot Discord** yang dibuat dengan bahasa **Ja
 - **Integrasi API:**  
   Dapat mengambil data dari API eksternal dan menampilkannya di server Discord.
 
+## Daftar Fitur/Command Berdasarkan Plugin
+
+Bot ini memiliki banyak fitur yang bisa diakses melalui command berikut (terintegrasi lewat plugin):
+
+| Nama Plugin                | Command/Fungsi            | Deskripsi Singkat                                                   |
+|----------------------------|---------------------------|---------------------------------------------------------------------|
+| acc-etc.js                 | (otomatis/utility)        | Fitur terkait akun dan data pengguna lainnya.                       |
+| campaign-create.js         | !campaign-create          | Membuat campaign baru di Discord.                                   |
+| campaign-edit.js           | !campaign-edit            | Mengedit campaign yang telah dibuat sebelumnya.                     |
+| check-campaign.js          | !check-campaign           | Mengecek status atau detail campaign tertentu.                      |
+| list-campaigns.js          | !list-campaigns           | Melihat daftar seluruh campaign yang tersedia.                      |
+| myaccount.js               | !myaccount                | Melihat atau mengatur data akun milik user.                         |
+| mycampaign.js              | !mycampaign               | Melihat/mengelola campaign milik pengguna.                          |
+| ping.js                    | !ping                     | Mengecek status/server bot, apakah online/responsif.                |
+| register.js                | !register                 | Registrasi akun ke database bot.                                    |
+| reject.js                  | !reject                   | Menolak/batalkan registrasi atau campaign.                          |
+| resetdb.js                 | !resetdb                  | Mereset database bot secara menyeluruh.                             |
+| set-announcement-channel.js| !set-announcement-channel | Mengatur channel untuk pengumuman otomatis dari bot.                |
+| setTiktok.js               | !setTiktok                | Mengatur data/integrasi pengumuman TikTok.                          |
+| submit-here.js             | !submit-here              | Submit data atau campaign di channel tertentu.                      |
+| tiktok.js                  | !tiktok                   | Fitur interaksi/link/video TikTok di server.                        |
+| unset.js                   | !unset                    | Menghapus atau reset pengaturan (misal: channel announcement).      |
+| view-campaigns.js          | !view-campaigns           | Melihat detail atau laporan campaign yang terdaftar.                |
+
+> *Catatan: Command/fungsi bisa berbeda penamaan di dalam bot, penjelasan di atas berdasarkan nama file dan fungsi umumnya.*
+
 ## Cara Instalasi
 
 1. **Clone repository**
@@ -25,7 +51,7 @@ Repository ini berisi source code **Bot Discord** yang dibuat dengan bahasa **Ja
    npm install
    ```
 3. **Konfigurasi Bot**  
-   Edit file `config.json` di root project dan sesuaikan sesuai data bot kamu.  
+   Edit file `config.json` di root project dan sesuaikan data bot kamu.  
    Berikut penjelasan isi dan contoh file `config.json`:
 
    ```json
@@ -41,7 +67,7 @@ Repository ini berisi source code **Bot Discord** yang dibuat dengan bahasa **Ja
    - `guildId` : ID server/guild Discord yang ingin dipakai bot.
    - `apiKey` : Kunci API eksternal (opsional, isi jika memakai integrasi API).
 
-## Deploy Command Bot Discord
+## Cara Deploy Command Bot Discord
 
 Agar perintah (commands) bot dapat terdaftar di Discord, Anda perlu melakukan deploy command. Biasanya ada script seperti `deploy-commands.js`.  
 Berikut langkah-langkahnya:
@@ -71,7 +97,7 @@ npm start
 
 - Seluruh kode menggunakan **JavaScript**.
 - Pengaturan utama bot ada pada file `config.json`.
-- File fungsi utama, command, serta modul lain diatur dalam folder sesuai fungsinya (`commands/`, `features/`, `utils/`, dll).
+- File fungsi utama, command, serta modul lain diatur dalam folder sesuai fungsinya (`commands/`, `features/`, `plugin/`, `utils/`, dll).
 
 ## Kontribusi
 
